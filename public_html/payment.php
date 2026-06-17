@@ -274,6 +274,11 @@ $regions = $regionService->getAllRegions();
             outline: none;
             box-shadow: 0 0 0 3px rgba(30,58,138,0.12);
         }
+        .modal-box input:disabled, .modal-box select:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
         .modal-box .row-2col {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -366,35 +371,39 @@ $regions = $regionService->getAllRegions();
         .modal-box .mobile-input {
             margin: 8px 0 4px;
         }
-
-        .autocomplete-list {
-            background: white;
-            border-radius: 16px;
-            border: 1px solid #dce1e9;
-            max-height: 160px;
-            overflow-y: auto;
-            margin-top: 4px;
-            position: absolute;
-            width: calc(100% - 32px);
-            z-index: 20;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        
+        .validation-status {
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
         }
-        .autocomplete-list .item {
-            padding: 10px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.9rem;
+        .validation-status.valid {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
         }
-        .autocomplete-list .item:hover {
-            background: #f8fafc;
+        .validation-status.invalid {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
         }
-        .autocomplete-list .item .region-tag {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            margin-left: 8px;
+        .validation-status.validating {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
         }
-        .relative {
-            position: relative;
+        .validation-status .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-left: 5px;
         }
 
         .app-footer {
@@ -417,6 +426,7 @@ $regions = $regionService->getAllRegions();
         .mb-1 { margin-bottom: 8px; }
         .text-sm { font-size: 0.85rem; color: #64748b; }
         .text-xs { font-size: 0.75rem; color: #94a3b8; }
+        .text-center { text-align: center; }
 
         @media (max-width: 640px) {
             .mpesa-brand-card {
@@ -442,6 +452,11 @@ $regions = $regionService->getAllRegions();
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .message-container {
@@ -481,23 +496,8 @@ $regions = $regionService->getAllRegions();
             animation: spin 1s linear infinite;
         }
 
-        .club-info-card {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-top: 8px;
-            border: 1px solid #e9edf2;
-        }
-        .club-info-card .label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: #94a3b8;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        .club-info-card .value {
-            font-weight: 600;
-            color: #0f172a;
+        .loading-text {
+            animation: pulse 1.5s ease-in-out infinite;
         }
 
         .region-select-wrapper {
@@ -512,9 +512,93 @@ $regions = $regionService->getAllRegions();
             padding-right: 40px;
             cursor: pointer;
         }
-        .region-select-wrapper select:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+
+        .team-select-wrapper {
+            position: relative;
+        }
+        .team-select-wrapper select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+
+        .club-info-card {
+            background: #f0fdf4;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-top: 8px;
+            border: 1px solid #bbf7d0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .club-info-card i {
+            color: #15803d;
+            font-size: 1.2rem;
+        }
+        .club-info-card .info-text {
+            font-weight: 500;
+            color: #166534;
+        }
+        .club-info-card .info-text small {
+            font-weight: 400;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+        
+        .id-type-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .id-type-option {
+            border: 2px solid #dce1e9;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1e293b;
+        }
+        .id-type-option:hover {
+            border-color: #1e3a8a;
+            background: #f0f4ff;
+        }
+        .id-type-option.selected {
+            border-color: #1e3a8a;
+            background: #e6edfc;
+            color: #1e3a8a;
+        }
+        .id-type-option i {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+        }
+        .dffk-id-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dffk-id-input span {
+            font-weight: 600;
+            color: #475569;
+            white-space: nowrap;
+        }
+        .dffk-id-input input {
+            text-align: center;
+        }
+        .dffk-id-input input:first-of-type {
+            width: 80px;
+        }
+        .dffk-id-input input:last-of-type {
+            width: 70px;
         }
     </style>
 </head>
@@ -606,9 +690,10 @@ $regions = $regionService->getAllRegions();
 <script>
     (function() {
         // ----- API Configuration -----
-        const API_BASE_URL = '/dashboard/api/payment_super.php';
-        const TEAMS_BY_REGION_URL = '/dashboard/api/get_teams_by_region.php';
-        const TEAM_DETAILS_URL = '/dashboard/api/get_team_details.php';
+        // Use relative path like payments.php does
+        const API_BASE_URL = 'dashboard/api/payment_super.php';
+        const TEAMS_BY_REGION_URL = 'dashboard/api/get_teams_by_region.php';
+        const VALIDATE_DFFK_URL = 'dashboard/api/validate_dffk.php';
 
         // ----- API Functions -----
         const paymentAPI = {
@@ -634,11 +719,10 @@ $regions = $regionService->getAllRegions();
             },
 
             async validateDffk(dffkCode, paymentType) {
-                const response = await fetch(API_BASE_URL, {
+                const response = await fetch(VALIDATE_DFFK_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'validate_dffk',
                         dffk_code: dffkCode,
                         payment_type: paymentType
                     })
@@ -647,15 +731,8 @@ $regions = $regionService->getAllRegions();
             },
 
             async getTeamsByRegion(regionId) {
-                const url = new URL(TEAMS_BY_REGION_URL);
+                const url = new URL(TEAMS_BY_REGION_URL, window.location.origin);
                 url.searchParams.append('region_id', regionId);
-                const response = await fetch(url);
-                return await response.json();
-            },
-
-            async getTeamDetails(teamId) {
-                const url = new URL(TEAM_DETAILS_URL);
-                url.searchParams.append('id', teamId);
                 const response = await fetch(url);
                 return await response.json();
             }
@@ -668,7 +745,8 @@ $regions = $regionService->getAllRegions();
         let selectedClubId = null;
         let selectedClubName = '';
         let paymentPollingTimer = null;
-        let clubsByRegion = [];
+        let validationTimeout = null;
+        let currentValidationAbort = null;
 
         // DOM refs
         const modal = document.getElementById('paymentModal');
@@ -706,6 +784,14 @@ $regions = $regionService->getAllRegions();
             if (paymentPollingTimer) {
                 clearTimeout(paymentPollingTimer);
                 paymentPollingTimer = null;
+            }
+            if (validationTimeout) {
+                clearTimeout(validationTimeout);
+                validationTimeout = null;
+            }
+            if (currentValidationAbort) {
+                currentValidationAbort.abort();
+                currentValidationAbort = null;
             }
             selectedAmount = null;
             selectedFine = null;
@@ -752,7 +838,32 @@ $regions = $regionService->getAllRegions();
                     sub = 'Pay your annual registration fee';
                     html = `
                         ${basePhone}
-                        ${baseId}
+                        <label>Identification Type <span class="required">*</span></label>
+                        <div class="id-type-options" id="idTypeOptions">
+                            <div class="id-type-option" data-type="national_id">
+                                <i class="fas fa-id-card"></i>
+                                National ID
+                            </div>
+                            <div class="id-type-option" data-type="dffk_id">
+                                <i class="fas fa-tag"></i>
+                                DFFK ID
+                            </div>
+                        </div>
+                        <div id="nationalIdGroup" style="display: none;">
+                            <label for="nationalIdInput">National ID Number <span class="required">*</span></label>
+                            <input type="text" id="nationalIdInput" placeholder="Enter your National ID number">
+                            <div id="nationalIdValidation" class="validation-status hidden"></div>
+                        </div>
+                        <div id="dffkIdGroup" style="display: none;">
+                            <label>DFFK ID <span class="required">*</span></label>
+                            <div class="dffk-id-input">
+                                <span>DFFK-PL-</span>
+                                <input type="text" id="dffkIdNumbers" placeholder="12345" maxlength="5">
+                                <span>-</span>
+                                <input type="text" id="dffkIdYear" placeholder="2026" maxlength="4">
+                            </div>
+                            <div id="dffkIdValidation" class="validation-status hidden"></div>
+                        </div>
                         <div class="text-sm mb-1">Enter your DFFK code or National ID to validate your account</div>
                         <label>Gender <span class="required">*</span></label>
                         <div class="row-2col">
@@ -764,6 +875,7 @@ $regions = $regionService->getAllRegions();
                                 <i class="fas fa-tag"></i> <span id="regAmountDisplay">250</span> KES
                             </div>
                         </div>
+                        <input type="hidden" id="validatedDffkCode" value="">
                     `;
                     break;
 
@@ -775,25 +887,24 @@ $regions = $regionService->getAllRegions();
                         <label><i class="fas fa-map-marker-alt"></i> Select Region <span class="required">*</span></label>
                         <div class="region-select-wrapper">
                             <select id="regionSelect" class="form-control">
-                                <option value="">Select Region</option>
+                                <option value="">-- Select Region --</option>
                                 <?php foreach ($regions as $region): ?>
                                     <option value="<?= $region['id'] ?>"><?= htmlspecialchars($region['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div id="regionLoading" class="text-sm mt-1 hidden">
-                            <i class="fas fa-spinner spinner"></i> Loading clubs...
-                        </div>
                         <label><i class="fas fa-flag"></i> Select Club <span class="required">*</span></label>
-                        <div class="relative">
-                            <input type="text" id="clubInput" placeholder="Select a region first" autocomplete="off" disabled>
-                            <div id="autocompleteList" class="autocomplete-list hidden"></div>
+                        <div class="team-select-wrapper">
+                            <select id="teamSelect" class="form-control" disabled>
+                                <option value="">Select a region first</option>
+                            </select>
                         </div>
-                        <input type="hidden" id="clubId" value="">
                         <div id="clubInfoCard" class="club-info-card hidden">
-                            <div class="label">Selected Club</div>
-                            <div class="value" id="clubDisplayName">-</div>
-                            <div class="text-xs mt-1" id="clubRegionDisplay">-</div>
+                            <i class="fas fa-check-circle"></i>
+                            <div class="info-text">
+                                Selected: <span id="clubDisplayName">-</span>
+                                <small id="clubRegionDisplay"></small>
+                            </div>
                         </div>
                         <label>Club Gender <span class="required">*</span></label>
                         <select id="teamGender">
@@ -871,6 +982,106 @@ $regions = $regionService->getAllRegions();
             attachListeners(cardType);
         }
 
+        // ----- Validation Functions -----
+        function setupRealTimeValidation(cardType) {
+            if (cardType !== 'registration') return;
+            
+            const nationalIdInput = document.getElementById('nationalIdInput');
+            const dffkNumbersInput = document.getElementById('dffkIdNumbers');
+            const dffkYearInput = document.getElementById('dffkIdYear');
+            
+            // Clear previous timeout
+            clearTimeout(validationTimeout);
+            
+            // Set up validation with delay
+            validationTimeout = setTimeout(() => {
+                const idType = document.querySelector('.id-type-option.selected');
+                if (!idType) return;
+                
+                const type = idType.dataset.type;
+                
+                if (type === 'national_id' && nationalIdInput && nationalIdInput.value.length >= 5) {
+                    validateDffkCode('NATIONAL-' + nationalIdInput.value, 'player_registration', 'nationalIdValidation');
+                } else if (type === 'dffk_id' && dffkNumbersInput && dffkYearInput && 
+                           dffkNumbersInput.value.length >= 3 && dffkYearInput.value.length === 4) {
+                    validateDffkCode(`DFFK-PL-${dffkNumbersInput.value}-${dffkYearInput.value}`, 'player_registration', 'dffkIdValidation');
+                }
+            }, 800);
+        }
+
+        async function validateDffkCode(dffkCode, paymentType, validationElementId) {
+            try {
+                // Cancel previous validation if still running
+                if (currentValidationAbort) {
+                    currentValidationAbort.abort();
+                }
+                
+                currentValidationAbort = new AbortController();
+                
+                const statusElement = document.getElementById(validationElementId);
+                if (!statusElement) return;
+                
+                statusElement.className = 'validation-status validating';
+                statusElement.innerHTML = 'Validating... <span class="spinner"></span>';
+                statusElement.style.display = 'block';
+                
+                const response = await fetch(VALIDATE_DFFK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dffk_code: dffkCode,
+                        payment_type: paymentType
+                    }),
+                    signal: currentValidationAbort.signal
+                });
+
+                const result = await response.json();
+                
+                // Store validated DFFK code
+                document.getElementById('validatedDffkCode').value = dffkCode;
+                
+                if (result.success) {
+                    statusElement.className = 'validation-status valid';
+                    statusElement.innerHTML = '✓ ' + result.message;
+                    
+                    // Auto-populate the name field if it's empty
+                    const nameField = document.getElementById('userName');
+                    if (nameField && result.player_name && !nameField.value) {
+                        nameField.value = result.player_name;
+                    }
+                } else {
+                    statusElement.className = 'validation-status invalid';
+                    statusElement.innerHTML = '✗ ' + result.message;
+                    document.getElementById('validatedDffkCode').value = '';
+                }
+                
+                currentValidationAbort = null;
+                return result;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Validation aborted');
+                    return;
+                }
+                
+                console.error('Validation error:', error);
+                const statusElement = document.getElementById(validationElementId);
+                if (statusElement) {
+                    statusElement.className = 'validation-status invalid';
+                    statusElement.innerHTML = '✗ Validation failed. Please try again.';
+                }
+                return { success: false, message: 'Validation failed' };
+            }
+        }
+
+        function clearValidationMessages() {
+            document.querySelectorAll('.validation-status').forEach(el => {
+                el.style.display = 'none';
+                el.className = 'validation-status hidden';
+            });
+        }
+
         // ----- Attach Event Listeners -----
         function attachListeners(cardType) {
             if (cardType === 'registration') {
@@ -879,6 +1090,50 @@ $regions = $regionService->getAllRegions();
                 if (genderSel) {
                     genderSel.addEventListener('change', function() {
                         display.textContent = this.value === 'male' ? '250' : '200';
+                    });
+                }
+
+                // ID Type selection
+                const idOptions = document.querySelectorAll('.id-type-option');
+                idOptions.forEach(option => {
+                    option.addEventListener('click', function() {
+                        idOptions.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        
+                        const type = this.dataset.type;
+                        const nationalGroup = document.getElementById('nationalIdGroup');
+                        const dffkGroup = document.getElementById('dffkIdGroup');
+                        
+                        nationalGroup.style.display = 'none';
+                        dffkGroup.style.display = 'none';
+                        clearValidationMessages();
+                        
+                        if (type === 'national_id') {
+                            nationalGroup.style.display = 'block';
+                        } else if (type === 'dffk_id') {
+                            dffkGroup.style.display = 'block';
+                        }
+                    });
+                });
+
+                // Input listeners for validation
+                const nationalIdInput = document.getElementById('nationalIdInput');
+                const dffkNumbersInput = document.getElementById('dffkIdNumbers');
+                const dffkYearInput = document.getElementById('dffkIdYear');
+                
+                if (nationalIdInput) {
+                    nationalIdInput.addEventListener('input', function() {
+                        setupRealTimeValidation('registration');
+                    });
+                }
+                if (dffkNumbersInput) {
+                    dffkNumbersInput.addEventListener('input', function() {
+                        setupRealTimeValidation('registration');
+                    });
+                }
+                if (dffkYearInput) {
+                    dffkYearInput.addEventListener('input', function() {
+                        setupRealTimeValidation('registration');
                     });
                 }
             }
@@ -893,118 +1148,99 @@ $regions = $regionService->getAllRegions();
                 }
 
                 const regionSelect = document.getElementById('regionSelect');
-                const clubInput = document.getElementById('clubInput');
-                const list = document.getElementById('autocompleteList');
-                const clubIdInput = document.getElementById('clubId');
+                const teamSelect = document.getElementById('teamSelect');
                 const clubInfoCard = document.getElementById('clubInfoCard');
                 const clubDisplayName = document.getElementById('clubDisplayName');
                 const clubRegionDisplay = document.getElementById('clubRegionDisplay');
-                const regionLoading = document.getElementById('regionLoading');
 
-                // Region change - load teams using get_teams_by_region.php
+                // Region change handler - fetch teams using get_teams_by_region.php
                 regionSelect.addEventListener('change', async function() {
                     const regionId = this.value;
+                    
                     if (!regionId) {
-                        clubInput.disabled = true;
-                        clubInput.placeholder = 'Select a region first';
-                        list.classList.add('hidden');
+                        teamSelect.innerHTML = '<option value="">Select a region first</option>';
+                        teamSelect.disabled = true;
                         clubInfoCard.classList.add('hidden');
-                        clubsByRegion = [];
+                        selectedClubId = null;
+                        selectedClubName = '';
                         return;
                     }
 
-                    clubInput.disabled = true;
-                    clubInput.placeholder = 'Loading clubs...';
-                    regionLoading.classList.remove('hidden');
-                    list.classList.add('hidden');
+                    // Show loading state
+                    teamSelect.innerHTML = '<option value="">Loading teams...</option>';
+                    teamSelect.disabled = true;
                     clubInfoCard.classList.add('hidden');
+                    selectedClubId = null;
+                    selectedClubName = '';
 
                     try {
+                        // Fetch teams for the selected region
                         const teams = await paymentAPI.getTeamsByRegion(regionId);
+
+                        // Clear and populate team select
+                        teamSelect.innerHTML = '<option value="">-- Select Club --</option>';
                         
-                        if (!teams || teams.length === 0 || teams.error) {
-                            clubInput.placeholder = 'No clubs found in this region';
-                            clubsByRegion = [];
-                            regionLoading.classList.add('hidden');
+                        // Check if teams is an array and has items
+                        if (!Array.isArray(teams) || teams.length === 0) {
+                            teamSelect.innerHTML = '<option value="">No clubs found in this region</option>';
+                            teamSelect.disabled = true;
                             return;
                         }
 
-                        clubsByRegion = teams;
-                        clubInput.disabled = false;
-                        clubInput.placeholder = 'Type to search clubs...';
-                        regionLoading.classList.add('hidden');
-                        clubInput.focus();
+                        // Check if there's an error property
+                        if (teams.error) {
+                            teamSelect.innerHTML = '<option value="">' + teams.error + '</option>';
+                            teamSelect.disabled = true;
+                            return;
+                        }
+
+                        // Sort teams alphabetically
+                        teams.sort((a, b) => a.name.localeCompare(b.name));
+
+                        teams.forEach(team => {
+                            const option = document.createElement('option');
+                            option.value = team.id;
+                            option.textContent = team.name;
+                            // Store region name from the region select
+                            const regionName = regionSelect.options[regionSelect.selectedIndex]?.textContent || '';
+                            option.dataset.region = regionName;
+                            teamSelect.appendChild(option);
+                        });
+
+                        teamSelect.disabled = false;
 
                     } catch (error) {
-                        console.error('Error loading teams:', error);
-                        clubInput.placeholder = 'Error loading clubs';
-                        clubsByRegion = [];
-                        regionLoading.classList.add('hidden');
+                        console.error('Error fetching teams:', error);
+                        teamSelect.innerHTML = '<option value="">Error loading clubs. Please try again.</option>';
+                        teamSelect.disabled = true;
+                        showMessage('error', 'Failed to load clubs for this region');
                     }
                 });
 
-                // Club search with autocomplete
-                if (clubInput) {
-                    let debounceTimer;
+                // Team selection handler
+                teamSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const teamId = this.value;
+                    
+                    if (!teamId) {
+                        clubInfoCard.classList.add('hidden');
+                        selectedClubId = null;
+                        selectedClubName = '';
+                        return;
+                    }
 
-                    clubInput.addEventListener('input', function() {
-                        clearTimeout(debounceTimer);
-                        const val = this.value.trim();
+                    selectedClubId = parseInt(teamId);
+                    selectedClubName = selectedOption.textContent;
+                    
+                    // Get region name from the region select
+                    const regionSelect = document.getElementById('regionSelect');
+                    const regionName = regionSelect.options[regionSelect.selectedIndex]?.textContent || '';
 
-                        if (val.length < 1 || clubsByRegion.length === 0) {
-                            list.classList.add('hidden');
-                            return;
-                        }
-
-                        const filtered = clubsByRegion.filter(c => 
-                            c.name.toLowerCase().includes(val.toLowerCase())
-                        );
-
-                        if (filtered.length === 0) {
-                            list.innerHTML = '<div class="item" style="color:#94a3b8;">No matching clubs found</div>';
-                            list.classList.remove('hidden');
-                            return;
-                        }
-
-                        list.innerHTML = filtered.map(c =>
-                            `<div class="item" data-club-id="${c.id}" data-club-name="${c.name}" data-region="${c.region_name || ''}">
-                                ${c.name}
-                                <span class="region-tag">${c.region_name || ''}</span>
-                            </div>`
-                        ).join('');
-                        list.classList.remove('hidden');
-
-                        list.querySelectorAll('.item').forEach(el => {
-                            el.addEventListener('click', function() {
-                                const clubId = this.dataset.clubId;
-                                const clubName = this.dataset.clubName;
-                                const region = this.dataset.region || '';
-                                
-                                clubInput.value = clubName;
-                                clubIdInput.value = clubId;
-                                selectedClubId = parseInt(clubId);
-                                selectedClubName = clubName;
-                                
-                                // Show club details
-                                clubInfoCard.classList.remove('hidden');
-                                clubDisplayName.textContent = clubName;
-                                clubRegionDisplay.textContent = region || 'Region not specified';
-                                
-                                list.classList.add('hidden');
-                            });
-                        });
-                    });
-
-                    clubInput.addEventListener('blur', function() {
-                        setTimeout(() => list.classList.add('hidden'), 200);
-                    });
-
-                    clubInput.addEventListener('focus', function() {
-                        if (this.value.trim().length >= 1 && clubsByRegion.length > 0) {
-                            this.dispatchEvent(new Event('input'));
-                        }
-                    });
-                }
+                    // Show club info
+                    clubInfoCard.classList.remove('hidden');
+                    clubDisplayName.textContent = selectedClubName;
+                    clubRegionDisplay.textContent = regionName ? `(${regionName})` : '';
+                });
             }
 
             if (cardType === 'donate') {
@@ -1070,22 +1306,63 @@ $regions = $regionService->getAllRegions();
             let clubId = null;
             let clubName = '';
             let gender = '';
+            let validatedDffkCode = '';
 
             switch(cardType) {
                 case 'registration': {
                     gender = document.getElementById('regGender')?.value || 'male';
                     amount = gender === 'male' ? 250 : 200;
                     paymentType = 'registration';
-                    accountReference = 'REG-' + (dffkCode || 'USER');
+                    
+                    // Check if validation was done
+                    const idType = document.querySelector('.id-type-option.selected');
+                    if (!idType) {
+                        showMessage('error', 'Please select an identification type');
+                        return;
+                    }
+                    
+                    const type = idType.dataset.type;
+                    let idValue = '';
+                    
+                    if (type === 'national_id') {
+                        const nationalId = document.getElementById('nationalIdInput')?.value?.trim();
+                        if (!nationalId) {
+                            showMessage('error', 'Please enter your National ID number');
+                            return;
+                        }
+                        idValue = nationalId;
+                    } else if (type === 'dffk_id') {
+                        const numbers = document.getElementById('dffkIdNumbers')?.value?.trim();
+                        const year = document.getElementById('dffkIdYear')?.value?.trim();
+                        if (!numbers || !year) {
+                            showMessage('error', 'Please complete your DFFK ID');
+                            return;
+                        }
+                        idValue = `DFFK-PL-${numbers}-${year}`;
+                    }
+                    
+                    // Check validation status
+                    const validationStatus = document.getElementById('nationalIdValidation') || document.getElementById('dffkIdValidation');
+                    if (validationStatus && validationStatus.classList.contains('invalid')) {
+                        showMessage('error', 'Please fix validation errors before proceeding');
+                        return;
+                    }
+                    
+                    accountReference = 'REG-' + (idValue || 'USER');
                     transactionDesc = `Registration fee (${gender})`;
+                    validatedDffkCode = idValue;
                     break;
                 }
                 case 'team': {
                     gender = document.getElementById('teamGender')?.value || 'male';
                     amount = gender === 'male' ? 10000 : 5000;
                     paymentType = 'team_registration';
-                    clubName = document.getElementById('clubInput')?.value?.trim() || '';
-                    clubId = document.getElementById('clubId')?.value || null;
+                    
+                    // Get selected club from dropdown
+                    const teamSelect = document.getElementById('teamSelect');
+                    const selectedOption = teamSelect.options[teamSelect.selectedIndex];
+                    clubId = teamSelect.value || null;
+                    clubName = selectedOption?.textContent || '';
                     
                     if (!clubId) {
                         showMessage('error', 'Please select a club from the list');
@@ -1155,16 +1432,33 @@ $regions = $regionService->getAllRegions();
                 return;
             }
 
-            if (dffkCode && (cardType === 'registration' || cardType === 'matchfine' || cardType === 'otherfine')) {
-                try {
-                    const validation = await paymentAPI.validateDffk(dffkCode, paymentType);
-                    if (!validation.success) {
-                        showMessage('error', validation.message);
-                        return;
+            // Clean phone number
+            let cleanedPhone = phone.replace(/\D/g, '');
+            if (cleanedPhone.startsWith('0') && cleanedPhone.length === 10) {
+                cleanedPhone = '254' + cleanedPhone.substring(1);
+            }
+            if (!cleanedPhone.startsWith('254') || cleanedPhone.length !== 12) {
+                showMessage('error', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
+                return;
+            }
+
+            // For registration, use validated DFFK code
+            if (cardType === 'registration') {
+                const idType = document.querySelector('.id-type-option.selected');
+                if (idType) {
+                    const type = idType.dataset.type;
+                    if (type === 'national_id') {
+                        const nationalId = document.getElementById('nationalIdInput')?.value?.trim();
+                        if (nationalId) {
+                            validatedDffkCode = 'NATIONAL-' + nationalId;
+                        }
+                    } else if (type === 'dffk_id') {
+                        const numbers = document.getElementById('dffkIdNumbers')?.value?.trim();
+                        const year = document.getElementById('dffkIdYear')?.value?.trim();
+                        if (numbers && year) {
+                            validatedDffkCode = `DFFK-PL-${numbers}-${year}`;
+                        }
                     }
-                } catch (error) {
-                    showMessage('error', 'Error validating DFFK code: ' + error.message);
-                    return;
                 }
             }
 
@@ -1176,10 +1470,10 @@ $regions = $regionService->getAllRegions();
                 const result = await paymentAPI.initiatePayment({
                     payment_type: paymentType,
                     amount: amount,
-                    phone_number: phone,
+                    phone_number: cleanedPhone,
                     account_reference: accountReference,
                     transaction_desc: transactionDesc,
-                    dffk_code: dffkCode || null,
+                    dffk_code: validatedDffkCode || dffkCode || null,
                     account_name: name || 'DFFK User',
                     reference_id: referenceId,
                     club_id: clubId,
@@ -1190,7 +1484,7 @@ $regions = $regionService->getAllRegions();
                 if (result.success) {
                     confirmMsg.innerHTML = `
                         <i class="fas fa-check-circle" style="color:#15803d;"></i>
-                        STK push sent to ${phone}. Please check your phone and enter your PIN.
+                        STK push sent to ${cleanedPhone}. Please check your phone and enter your PIN.
                         <br><small>Checkout ID: ${result.data.checkout_request_id || 'N/A'}</small>
                     `;
                     actionBtn.textContent = 'Check Status';
