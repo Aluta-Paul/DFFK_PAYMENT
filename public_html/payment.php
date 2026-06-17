@@ -1,3 +1,9 @@
+<?php
+// Load regions from database
+require_once __DIR__ . '/../app/services/RegionService.php';
+$regionService = new RegionService();
+$regions = $regionService->getAllRegions();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -191,13 +197,26 @@
         }
         .modal-box {
             background: white;
-            max-width: 520px;
+            max-width: 560px;
             width: 100%;
             border-radius: 32px;
             padding: 30px 28px 28px;
             box-shadow: 0 40px 70px rgba(0,0,0,0.25);
             position: relative;
             animation: slideUp 0.25s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        .modal-box::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        .modal-box::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
         }
         @keyframes slideUp {
             0% { opacity: 0; transform: translateY(24px); }
@@ -213,6 +232,7 @@
             transition: 0.15s;
             background: none;
             border: none;
+            z-index: 5;
         }
         .modal-box .close-modal:hover {
             color: #1e293b;
@@ -234,6 +254,10 @@
             display: block;
             margin: 14px 0 4px;
             color: #1e293b;
+        }
+        .modal-box label .required {
+            color: #dc2626;
+            margin-left: 2px;
         }
         .modal-box input, .modal-box select {
             width: 100%;
@@ -309,12 +333,13 @@
         }
         .modal-box .fine-options .fine-pill {
             background: #f1f5f9;
-            padding: 6px 18px;
+            padding: 8px 18px;
             border-radius: 40px;
             font-weight: 600;
             font-size: 0.85rem;
             cursor: pointer;
             border: 1.5px solid transparent;
+            transition: all 0.15s;
         }
         .modal-box .fine-options .fine-pill.active {
             border-color: #b91c1c;
@@ -363,6 +388,11 @@
         .autocomplete-list .item:hover {
             background: #f8fafc;
         }
+        .autocomplete-list .item .region-tag {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-left: 8px;
+        }
         .relative {
             position: relative;
         }
@@ -386,6 +416,7 @@
         .mt-1 { margin-top: 8px; }
         .mb-1 { margin-bottom: 8px; }
         .text-sm { font-size: 0.85rem; color: #64748b; }
+        .text-xs { font-size: 0.75rem; color: #94a3b8; }
 
         @media (max-width: 640px) {
             .mpesa-brand-card {
@@ -397,6 +428,10 @@
                 grid-template-columns: 1fr;
             }
             .page-title h1 { font-size: 1.5rem; }
+            .modal-box {
+                padding: 20px 16px;
+                max-height: 95vh;
+            }
         }
 
         @keyframes slideIn {
@@ -445,6 +480,42 @@
             display: inline-block;
             animation: spin 1s linear infinite;
         }
+
+        .club-info-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-top: 8px;
+            border: 1px solid #e9edf2;
+        }
+        .club-info-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .club-info-card .value {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .region-select-wrapper {
+            position: relative;
+        }
+        .region-select-wrapper select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+        .region-select-wrapper select:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -486,7 +557,7 @@
             <div class="card-icon"><i class="fas fa-users"></i></div>
             <h3>Team Registration</h3>
             <div class="desc">Club registration: men KES 10,000 / women KES 5,000</div>
-            <span class="badge"><i class="fas fa-search"></i> autocomplete club</span>
+            <span class="badge"><i class="fas fa-search"></i> region + club</span>
         </div>
         <div class="payment-card" data-card="donate">
             <div class="card-icon"><i class="fas fa-hand-holding-heart"></i></div>
@@ -536,8 +607,8 @@
     (function() {
         // ----- API Configuration -----
         const API_BASE_URL = '/dashboard/api/payment_super.php';
-        const TEAMS_SEARCH_API_URL = '/dashboard/api/get_teams_by_region.php';
-        const TEAM_DETAILS_API_URL = '/dashboard/api/get_team_details.php';
+        const TEAMS_BY_REGION_URL = '/dashboard/api/get_teams_by_region.php';
+        const TEAM_DETAILS_URL = '/dashboard/api/get_team_details.php';
 
         // ----- API Functions -----
         const paymentAPI = {
@@ -575,22 +646,17 @@
                 return await response.json();
             },
 
-            async searchClubs(searchTerm) {
-                const url = new URL(TEAMS_SEARCH_API_URL);
-                url.searchParams.append('search', searchTerm);
+            async getTeamsByRegion(regionId) {
+                const url = new URL(TEAMS_BY_REGION_URL);
+                url.searchParams.append('region_id', regionId);
                 const response = await fetch(url);
                 return await response.json();
             },
 
             async getTeamDetails(teamId) {
-                const url = new URL(TEAM_DETAILS_API_URL);
+                const url = new URL(TEAM_DETAILS_URL);
                 url.searchParams.append('id', teamId);
                 const response = await fetch(url);
-                return await response.json();
-            },
-
-            async getAllClubs() {
-                const response = await fetch(TEAMS_SEARCH_API_URL);
                 return await response.json();
             }
         };
@@ -602,7 +668,7 @@
         let selectedClubId = null;
         let selectedClubName = '';
         let paymentPollingTimer = null;
-        let allClubs = [];
+        let clubsByRegion = [];
 
         // DOM refs
         const modal = document.getElementById('paymentModal');
@@ -665,7 +731,7 @@
             let sub = '';
 
             const basePhone = `
-                <label><i class="fas fa-phone"></i> M-Pesa Mobile Number</label>
+                <label><i class="fas fa-phone"></i> M-Pesa Mobile Number <span class="required">*</span></label>
                 <input type="tel" id="mpesaPhone" placeholder="0712 345 678" class="mobile-input">
                 <div class="text-sm mt-1">Enter the phone number registered with M-Pesa</div>
             `;
@@ -688,7 +754,7 @@
                         ${basePhone}
                         ${baseId}
                         <div class="text-sm mb-1">Enter your DFFK code or National ID to validate your account</div>
-                        <label>Gender</label>
+                        <label>Gender <span class="required">*</span></label>
                         <div class="row-2col">
                             <select id="regGender">
                                 <option value="male">Male (KES 250)</option>
@@ -706,16 +772,30 @@
                     sub = 'Register your club for the season';
                     html = `
                         ${basePhone}
-                        <label><i class="fas fa-flag"></i> Club Name</label>
+                        <label><i class="fas fa-map-marker-alt"></i> Select Region <span class="required">*</span></label>
+                        <div class="region-select-wrapper">
+                            <select id="regionSelect" class="form-control">
+                                <option value="">Select Region</option>
+                                <?php foreach ($regions as $region): ?>
+                                    <option value="<?= $region['id'] ?>"><?= htmlspecialchars($region['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div id="regionLoading" class="text-sm mt-1 hidden">
+                            <i class="fas fa-spinner spinner"></i> Loading clubs...
+                        </div>
+                        <label><i class="fas fa-flag"></i> Select Club <span class="required">*</span></label>
                         <div class="relative">
-                            <input type="text" id="clubInput" placeholder="Start typing club name..." autocomplete="off">
+                            <input type="text" id="clubInput" placeholder="Select a region first" autocomplete="off" disabled>
                             <div id="autocompleteList" class="autocomplete-list hidden"></div>
                         </div>
                         <input type="hidden" id="clubId" value="">
-                        <div id="clubDetails" class="text-sm mt-1" style="display:none;background:#f1f5f9;padding:8px 12px;border-radius:8px;">
-                            <i class="fas fa-info-circle"></i> <span id="clubInfo"></span>
+                        <div id="clubInfoCard" class="club-info-card hidden">
+                            <div class="label">Selected Club</div>
+                            <div class="value" id="clubDisplayName">-</div>
+                            <div class="text-xs mt-1" id="clubRegionDisplay">-</div>
                         </div>
-                        <label>Club Gender</label>
+                        <label>Club Gender <span class="required">*</span></label>
                         <select id="teamGender">
                             <option value="male">Men (KES 10,000)</option>
                             <option value="female">Women (KES 5,000)</option>
@@ -729,7 +809,7 @@
                     sub = 'Support DFFK programs';
                     html = `
                         ${basePhone}
-                        <label>Amount</label>
+                        <label>Amount <span class="required">*</span></label>
                         <div class="amount-options" id="donateOptions">
                             <span class="pill" data-amount="200">KES 200</span>
                             <span class="pill" data-amount="500">KES 500</span>
@@ -747,7 +827,7 @@
                         ${basePhone}
                         ${baseId}
                         <div class="text-sm mb-1">Enter your DFFK code or National ID</div>
-                        <label>Fine Type</label>
+                        <label>Fine Type <span class="required">*</span></label>
                         <div class="fine-options" id="fineOptions">
                             <span class="fine-pill" data-fine="red" data-amount="200">Red card – KES 200</span>
                             <span class="fine-pill" data-fine="yellow" data-amount="150">Yellow card – KES 150</span>
@@ -764,9 +844,9 @@
                         ${basePhone}
                         ${baseName}
                         ${baseId}
-                        <label><i class="fas fa-pencil-alt"></i> Fine Description</label>
+                        <label><i class="fas fa-pencil-alt"></i> Fine Description <span class="required">*</span></label>
                         <input type="text" id="fineDesc" placeholder="e.g. Late match reporting, misconduct...">
-                        <label>Amount (KES)</label>
+                        <label>Amount (KES) <span class="required">*</span></label>
                         <input type="number" id="otherFineAmount" placeholder="Enter amount" min="1">
                         <input type="hidden" id="fineReference" value="">
                     `;
@@ -778,7 +858,7 @@
                     html = `
                         ${basePhone}
                         ${baseId}
-                        <label>Amount (KES)</label>
+                        <label>Amount (KES) <span class="required">*</span></label>
                         <input type="number" id="extraAmount" placeholder="Enter amount">
                         <label>Description</label>
                         <input type="text" id="extraDesc" placeholder="Reason for payment">
@@ -812,12 +892,58 @@
                     });
                 }
 
+                const regionSelect = document.getElementById('regionSelect');
                 const clubInput = document.getElementById('clubInput');
                 const list = document.getElementById('autocompleteList');
                 const clubIdInput = document.getElementById('clubId');
-                const clubDetails = document.getElementById('clubDetails');
-                const clubInfo = document.getElementById('clubInfo');
+                const clubInfoCard = document.getElementById('clubInfoCard');
+                const clubDisplayName = document.getElementById('clubDisplayName');
+                const clubRegionDisplay = document.getElementById('clubRegionDisplay');
+                const regionLoading = document.getElementById('regionLoading');
 
+                // Region change - load teams using get_teams_by_region.php
+                regionSelect.addEventListener('change', async function() {
+                    const regionId = this.value;
+                    if (!regionId) {
+                        clubInput.disabled = true;
+                        clubInput.placeholder = 'Select a region first';
+                        list.classList.add('hidden');
+                        clubInfoCard.classList.add('hidden');
+                        clubsByRegion = [];
+                        return;
+                    }
+
+                    clubInput.disabled = true;
+                    clubInput.placeholder = 'Loading clubs...';
+                    regionLoading.classList.remove('hidden');
+                    list.classList.add('hidden');
+                    clubInfoCard.classList.add('hidden');
+
+                    try {
+                        const teams = await paymentAPI.getTeamsByRegion(regionId);
+                        
+                        if (!teams || teams.length === 0 || teams.error) {
+                            clubInput.placeholder = 'No clubs found in this region';
+                            clubsByRegion = [];
+                            regionLoading.classList.add('hidden');
+                            return;
+                        }
+
+                        clubsByRegion = teams;
+                        clubInput.disabled = false;
+                        clubInput.placeholder = 'Type to search clubs...';
+                        regionLoading.classList.add('hidden');
+                        clubInput.focus();
+
+                    } catch (error) {
+                        console.error('Error loading teams:', error);
+                        clubInput.placeholder = 'Error loading clubs';
+                        clubsByRegion = [];
+                        regionLoading.classList.add('hidden');
+                    }
+                });
+
+                // Club search with autocomplete
                 if (clubInput) {
                     let debounceTimer;
 
@@ -825,54 +951,48 @@
                         clearTimeout(debounceTimer);
                         const val = this.value.trim();
 
-                        if (val.length < 2) {
+                        if (val.length < 1 || clubsByRegion.length === 0) {
                             list.classList.add('hidden');
-                            clubDetails.style.display = 'none';
                             return;
                         }
 
-                        debounceTimer = setTimeout(async () => {
-                            try {
-                                const clubs = await paymentAPI.searchClubs(val);
+                        const filtered = clubsByRegion.filter(c => 
+                            c.name.toLowerCase().includes(val.toLowerCase())
+                        );
 
-                                if (!clubs || clubs.length === 0 || clubs.error) {
-                                    list.innerHTML = '<div class="item" style="color:#94a3b8;">No clubs found</div>';
-                                    list.classList.remove('hidden');
-                                    return;
-                                }
+                        if (filtered.length === 0) {
+                            list.innerHTML = '<div class="item" style="color:#94a3b8;">No matching clubs found</div>';
+                            list.classList.remove('hidden');
+                            return;
+                        }
 
-                                allClubs = clubs;
+                        list.innerHTML = filtered.map(c =>
+                            `<div class="item" data-club-id="${c.id}" data-club-name="${c.name}" data-region="${c.region_name || ''}">
+                                ${c.name}
+                                <span class="region-tag">${c.region_name || ''}</span>
+                            </div>`
+                        ).join('');
+                        list.classList.remove('hidden');
 
-                                list.innerHTML = clubs.map(c =>
-                                    `<div class="item" data-club-id="${c.id}" data-club-name="${c.name}" data-region="${c.region_name || ''}">
-                                        ${c.name} ${c.region_name ? `<span style="color:#94a3b8;font-size:0.8rem;">(${c.region_name})</span>` : ''}
-                                    </div>`
-                                ).join('');
-                                list.classList.remove('hidden');
-
-                                list.querySelectorAll('.item').forEach(el => {
-                                    el.addEventListener('click', function() {
-                                        const clubId = this.dataset.clubId;
-                                        const clubName = this.dataset.clubName;
-                                        const region = this.dataset.region || '';
-                                        
-                                        clubInput.value = clubName;
-                                        clubIdInput.value = clubId;
-                                        selectedClubId = parseInt(clubId);
-                                        selectedClubName = clubName;
-                                        
-                                        // Show club details
-                                        clubDetails.style.display = 'block';
-                                        clubInfo.innerHTML = `${clubName} ${region ? `(Region: ${region})` : ''}`;
-                                        
-                                        list.classList.add('hidden');
-                                    });
-                                });
-                            } catch (error) {
-                                console.error('Error fetching clubs:', error);
+                        list.querySelectorAll('.item').forEach(el => {
+                            el.addEventListener('click', function() {
+                                const clubId = this.dataset.clubId;
+                                const clubName = this.dataset.clubName;
+                                const region = this.dataset.region || '';
+                                
+                                clubInput.value = clubName;
+                                clubIdInput.value = clubId;
+                                selectedClubId = parseInt(clubId);
+                                selectedClubName = clubName;
+                                
+                                // Show club details
+                                clubInfoCard.classList.remove('hidden');
+                                clubDisplayName.textContent = clubName;
+                                clubRegionDisplay.textContent = region || 'Region not specified';
+                                
                                 list.classList.add('hidden');
-                            }
-                        }, 300);
+                            });
+                        });
                     });
 
                     clubInput.addEventListener('blur', function() {
@@ -880,7 +1000,7 @@
                     });
 
                     clubInput.addEventListener('focus', function() {
-                        if (this.value.trim().length >= 2) {
+                        if (this.value.trim().length >= 1 && clubsByRegion.length > 0) {
                             this.dispatchEvent(new Event('input'));
                         }
                     });
@@ -949,10 +1069,11 @@
             let referenceId = null;
             let clubId = null;
             let clubName = '';
+            let gender = '';
 
             switch(cardType) {
                 case 'registration': {
-                    const gender = document.getElementById('regGender')?.value || 'male';
+                    gender = document.getElementById('regGender')?.value || 'male';
                     amount = gender === 'male' ? 250 : 200;
                     paymentType = 'registration';
                     accountReference = 'REG-' + (dffkCode || 'USER');
@@ -960,7 +1081,7 @@
                     break;
                 }
                 case 'team': {
-                    const gender = document.getElementById('teamGender')?.value || 'male';
+                    gender = document.getElementById('teamGender')?.value || 'male';
                     amount = gender === 'male' ? 10000 : 5000;
                     paymentType = 'team_registration';
                     clubName = document.getElementById('clubInput')?.value?.trim() || '';
@@ -1062,7 +1183,8 @@
                     account_name: name || 'DFFK User',
                     reference_id: referenceId,
                     club_id: clubId,
-                    club_name: clubName
+                    club_name: clubName,
+                    gender: gender
                 });
 
                 if (result.success) {
@@ -1177,19 +1299,6 @@
         closeBtn.addEventListener('click', closeModal);
         modal.addEventListener('click', function(e) {
             if (e.target === modal) closeModal();
-        });
-
-        // ----- Preload clubs on page load -----
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                const clubs = await paymentAPI.getAllClubs();
-                if (Array.isArray(clubs) && !clubs.error) {
-                    allClubs = clubs;
-                }
-            } catch (e) {
-                // Silent fail - will fetch on demand
-                console.debug('Preload clubs failed:', e);
-            }
         });
 
     })();
