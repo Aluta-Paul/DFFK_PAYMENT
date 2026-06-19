@@ -1,0 +1,26 @@
+Summary
+The payment flow now works as follows:
+
+User logs in → login_handler.php checks if membership is expired
+
+If expired → Redirect to payments.php
+
+User pays → payment_handler.php initiates M-Pesa STK push
+
+M-Pesa callback → mpesa_callback.php confirms payment and updates database
+
+On success → processSuccessfulPayment() activates membership and updates expiry date
+
+Session refreshed → refreshSessionAfterPayment() updates $_SESSION['user'] with new status
+
+User redirected → Back to dashboard with full access
+
+The key improvements:
+
+Database update: person_roles table is updated with is_active = 1 and new expiry_date
+
+Session refresh: $_SESSION['user'] is updated with new status
+
+Payment status polling: payment_status.php checks payment status and refreshes session
+
+Success page: payment_success.php confirms payment and redirects to dashboard

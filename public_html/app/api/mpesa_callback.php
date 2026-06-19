@@ -223,6 +223,103 @@ function processSuccessfulPayment($payment, $mpesaReceipt) {
 }
 
 /**
+ * Process successful payment and refresh session if applicable
+ */
+function processSuccessfulPayment($payment, $mpesaReceipt) {
+    $paymentType = $payment['payment_type'];
+    $paymentRepo = new PaymentRepository();
+    $expiryDate = date('Y-m-d', strtotime('+1 year'));
+    
+    try {
+        switch ($paymentType) {
+            case 'registration':
+            case 'membership_renewal':
+                // Activate player registration
+                if (!empty($payment['dffk_code'])) {
+                    $paymentRepo->activatePlayer($payment['dffk_code'], $expiryDate);
+                    
+                    // Also update person_roles directly
+                    $db = DatabaseConnection::getInstance();
+                    $stmt = $db->prepare("
+                        UPDATE person_roles 
+                        SET is_active = 1, expiry_date = :expiry_date, updated_at = NOW()
+                        WHERE dffk_code = :dffk_code
+                    ");
+                    $stmt->execute([
+                        ':expiry_date' => $expiryDate,
+                        ':dffk_code' => $payment['dffk_code']
+                    ]);
+                }
+                break;
+                
+            case 'team_registration':
+                // Activate team
+                if (!empty($payment['payer_id']) && $payment['payer_type'] === 'club') {
+                    $paymentRepo->activateTeam($payment['payer_id'], $expiryDate);
+                }
+                break;
+                
+            case 'match_fine':
+            case 'other_fine':
+                // Update fine record
+                if (!empty($payment['reference_id'])) {
+                    updateFineStatus($payment['reference_id'], 'paid');
+                }
+                break;
+                
+            case 'donation':
+                // Record donation - no action needed
+                break;
+                
+            case 'appeal':
+                // Process appeal payment
+                if (!empty($payment['reference_id'])) {
+                    processAppealPayment($payment['reference_id']);
+                }
+                break;
+                
+            default:
+                error_log("Unknown payment type processed: {$paymentType}");
+        }
+        
+        // Refresh session if the user is logged in
+        refreshSessionAfterPayment($payment);
+        
+        error_log("Payment processed successfully: ID={$payment['id']}, Type={$paymentType}, Receipt={$mpesaReceipt}");
+        
+    } catch (Exception $e) {
+        error_log("Error processing payment {$payment['id']}: " . $e->getMessage());
+    }
+}
+
+/**
+ * Refresh session if the current user is the payer
+ */
+function refreshSessionAfterPayment($payment) {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    
+    if (!isset($_SESSION['user'])) {
+        return;
+    }
+    
+    $sessionUser = $_SESSION['user'];
+    
+    // Check if this payment belongs to the current session user
+    if (!empty($payment['dffk_code']) && isset($sessionUser['dffk_code'])) {
+        if ($payment['dffk_code'] === $sessionUser['dffk_code']) {
+            // Update session
+            $_SESSION['user']['is_active'] = 1;
+            $_SESSION['user']['expiry_date'] = date('Y-m-d', strtotime('+1 year'));
+            $_SESSION['user']['membership_paid'] = true;
+            
+            error_log("Session refreshed for user: " . $sessionUser['username']);
+        }
+    }
+}
+
+/**
  * Update fine status
  */
 function updateFineStatus($fineId, $status) {

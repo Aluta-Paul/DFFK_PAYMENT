@@ -9,7 +9,9 @@ $regions = $regionService->getAllRegions();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DFFK – Payments</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/uploads/logo/dffk_favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/uploads/logo/dffk_favicon-16x16.png">
+    <title>Deaf Football Federation of Kenya - Payments</title>
     <!-- Font Awesome 6 (free) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Google Fonts: Montserrat + Open Sans (matching register) -->
@@ -1522,6 +1524,50 @@ $regions = $regionService->getAllRegions();
             } finally {
                 actionBtn.disabled = false;
             }
+        }
+
+        //handle status polling better
+        function checkPaymentStatus(paymentId) {
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds
+            
+            const interval = setInterval(() => {
+                attempts++;
+                
+                fetch(`payment_status.php?payment_id=${paymentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        showMessage('success', 'Payment successful! Redirecting...');
+                        
+                        // Redirect to success page
+                        setTimeout(() => {
+                            window.location.href = `payment_success.php?payment_id=${paymentId}`;
+                        }, 1500);
+                    } else if (data.status === 'failed') {
+                        clearInterval(interval);
+                        showMessage('error', 'Payment failed. Please try again.');
+                        document.querySelector('button[type="submit"]').disabled = false;
+                        document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-phone"></i> Pay with M-Pesa';
+                    } else if (data.status === 'cancelled') {
+                        clearInterval(interval);
+                        showMessage('error', 'Payment was cancelled. You can try again.');
+                        document.querySelector('button[type="submit"]').disabled = false;
+                        document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-phone"></i> Pay with M-Pesa';
+                    }
+                })
+                .catch(error => {
+                    // Continue polling
+                });
+                
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    showMessage('info', 'Payment processing is taking longer than expected. Please check your M-Pesa messages.');
+                    document.querySelector('button[type="submit"]').disabled = false;
+                    document.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-phone"></i> Pay with M-Pesa';
+                }
+            }, 1000);
         }
 
         // ----- Check Payment Status -----
