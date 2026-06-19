@@ -78,9 +78,21 @@ class PaymentRepository {
         $fields = [];
         $params = [':id' => $paymentId];
         
+        // Define valid status values
+        $validStatuses = ['pending', 'completed', 'failed', 'cancelled', 'timeout'];
+        
         foreach ($data as $key => $value) {
+            // Validate status if it's being updated
+            if ($key === 'status' && !in_array($value, $validStatuses)) {
+                error_log("Invalid status value: {$value}, using 'failed' instead");
+                $value = 'failed';
+            }
             $fields[] = "$key = :$key";
             $params[":$key"] = $value;
+        }
+        
+        if (empty($fields)) {
+            return false;
         }
         
         $stmt = $this->db->prepare("

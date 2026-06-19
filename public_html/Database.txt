@@ -1,0 +1,19 @@
+-- Update the status ENUM to include all possible statuses
+ALTER TABLE payments 
+MODIFY COLUMN status ENUM(
+    'pending', 
+    'completed', 
+    'failed', 
+    'cancelled', 
+    'timeout'
+) DEFAULT 'pending';
+
+-- Add columns for detailed error tracking if they don't exist
+ALTER TABLE payments 
+ADD COLUMN IF NOT EXISTS failure_code VARCHAR(50) DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS failure_reason TEXT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS transaction_date VARCHAR(20) DEFAULT NULL;
+
+-- Add index for faster queries
+ALTER TABLE payments ADD INDEX idx_status (status);
+ALTER TABLE payments ADD INDEX idx_failure_code (failure_code);

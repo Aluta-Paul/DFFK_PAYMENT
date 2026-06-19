@@ -45,6 +45,7 @@ try {
     }
     
     // Process based on result code
+
     if ($resultCode == 0) {
         // Payment successful
         $metadata = $callback['CallbackMetadata']['Item'] ?? [];
@@ -57,6 +58,8 @@ try {
             'status' => 'completed',
             'mpesa_receipt' => $mpesaReceipt,
             'transaction_date' => $transactionDate,
+            'failure_reason' => null,
+            'failure_code' => null,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
         
@@ -66,17 +69,17 @@ try {
         error_log("Payment completed: {$payment['id']}, Receipt: {$mpesaReceipt}");
         
     } else {
-        // Payment failed
-        $status = determinePaymentStatus($resultCode);
+        // Payment failed - use the new function
+        $statusInfo = determinePaymentStatus($resultCode);
         
         $paymentRepo->updatePayment($payment['id'], [
-            'status' => $status,
-            'failure_reason' => $resultDesc,
+            'status' => $statusInfo['status'],
+            'failure_reason' => $statusInfo['failure_reason'],
             'failure_code' => $resultCode,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
         
-        error_log("Payment failed: {$payment['id']}, Code: {$resultCode}, Reason: {$resultDesc}");
+        error_log("Payment failed: {$payment['id']}, Code: {$resultCode}, Reason: {$statusInfo['failure_reason']}");
     }
     
     // Always respond with success to Daraja
@@ -135,22 +138,32 @@ function extractAmount($metadata) {
     return null;
 }
 
+
 /**
  * Determine payment status based on result code
+ * Returns appropriate status and description
  */
-function determinePaymentStatus($resultCode) {
-    // User cancelled or timeout - keep as pending for retry
-    if ($resultCode == 1032 || $resultCode == 1037) {
-        return 'pending';
-    }
+function determinePaymentStatus($resultCode): array {
+    // Map result codes to status and description
+    $statusMap = [
+        0 => ['status' => 'completed', 'desc' => 'Payment completed successfully'],
+        1 => ['status' => 'failed', 'desc' => 'Insufficient funds in M-Pesa account'],
+        1032 => ['status' => 'cancelled', 'desc' => 'Transaction cancelled by user'],
+        1037 => ['status' => 'timeout', 'desc' => 'Transaction timed out - user did not respond'],
+        2001 => ['status' => 'failed', 'desc' => 'Invalid PIN entered'],
+        2002 => ['status' => 'failed', 'desc' => 'Invalid phone number'],
+        2003 => ['status' => 'failed', 'desc' => 'Transaction rejected by bank'],
+        2004 => ['status' => 'failed', 'desc' => 'Transaction failed - system error'],
+        // Default for any other code
+        'default' => ['status' => 'failed', 'desc' => 'Payment failed']
+    ];
     
-    // Insufficient funds - can retry
-    if ($resultCode == 1) {
-        return 'pending';
-    }
+    $result = $statusMap[$resultCode] ?? $statusMap['default'];
     
-    // All other failures
-    return 'failed';
+    return [
+        'status' => $result['status'],
+        'failure_reason' => $result['desc']
+    ];
 }
 
 /**

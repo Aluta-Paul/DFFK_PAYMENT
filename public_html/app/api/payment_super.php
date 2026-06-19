@@ -137,6 +137,9 @@ function initiatePayment($data) {
 /**
  * Query payment status
  */
+/**
+ * Query payment status
+ */
 function queryPaymentStatus($data) {
     if (empty($data['checkout_request_id'])) {
         throw new Exception('Checkout request ID is required');
@@ -158,8 +161,8 @@ function queryPaymentStatus($data) {
     $resultCode = $statusResponse['ResultCode'] ?? null;
     $resultDesc = $statusResponse['ResultDesc'] ?? '';
 
-    // Handle different result codes
-    $paymentStatus = handlePaymentResult($resultCode, $resultDesc);
+    // Use the same mapping function
+    $statusInfo = determinePaymentStatus($resultCode);
     
     // Update payment record
     if ($resultCode == 0) {
@@ -170,6 +173,8 @@ function queryPaymentStatus($data) {
         $paymentRepo->updatePayment($payment['id'], [
             'status' => 'completed',
             'mpesa_receipt' => $mpesaReceipt,
+            'failure_reason' => null,
+            'failure_code' => null,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
         
@@ -187,25 +192,48 @@ function queryPaymentStatus($data) {
             ]
         ];
     } else {
-        // Failed or pending
-        $status = $resultCode == '1037' ? 'pending' : 'failed';
-        
+        // Failed - use the mapped status
         $paymentRepo->updatePayment($payment['id'], [
-            'status' => $status,
-            'failure_reason' => $resultDesc,
+            'status' => $statusInfo['status'],
+            'failure_reason' => $statusInfo['failure_reason'],
+            'failure_code' => $resultCode,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
         
         return [
             'success' => false,
-            'message' => getPaymentErrorMessage($resultCode, $resultDesc),
+            'message' => $statusInfo['failure_reason'],
             'data' => [
-                'status' => $status,
+                'status' => $statusInfo['status'],
                 'result_code' => $resultCode,
-                'result_desc' => $resultDesc
+                'result_desc' => $resultDesc,
+                'failure_reason' => $statusInfo['failure_reason']
             ]
         ];
     }
+}
+
+/**
+ * Determine payment status based on result code
+ */
+function determinePaymentStatus($resultCode) {
+    $statusMap = [
+        0 => ['status' => 'completed', 'desc' => 'Payment completed successfully'],
+        1 => ['status' => 'failed', 'desc' => 'Insufficient funds in M-Pesa account. Please top up and try again.'],
+        1032 => ['status' => 'cancelled', 'desc' => 'Transaction cancelled by user. You can try again.'],
+        1037 => ['status' => 'timeout', 'desc' => 'Transaction timed out. Please check your phone and try again.'],
+        2001 => ['status' => 'failed', 'desc' => 'Invalid PIN entered. Please try again.'],
+        2002 => ['status' => 'failed', 'desc' => 'Invalid phone number. Please check and try again.'],
+        2003 => ['status' => 'failed', 'desc' => 'Transaction rejected by bank. Please try a different payment method.'],
+        2004 => ['status' => 'failed', 'desc' => 'System error. Please try again later.'],
+    ];
+    
+    $result = $statusMap[$resultCode] ?? [
+        'status' => 'failed', 
+        'desc' => 'Payment failed. Please try again.'
+    ];
+    
+    return $result;
 }
 
 /**

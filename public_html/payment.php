@@ -1525,6 +1525,7 @@ $regions = $regionService->getAllRegions();
         }
 
         // ----- Check Payment Status -----
+        // Update the checkPaymentStatus function
         async function checkPaymentStatus(checkoutRequestId) {
             if (!checkoutRequestId) {
                 showMessage('error', 'No checkout request ID available');
@@ -1547,7 +1548,7 @@ $regions = $regionService->getAllRegions();
                         clearTimeout(paymentPollingTimer);
                         paymentPollingTimer = null;
                     }
-                } else if (result.success && result.data?.status === 'pending') {
+                } else if (result.data?.status === 'pending') {
                     confirmMsg.innerHTML = `
                         <i class="fas fa-clock" style="color:#f59e0b;"></i>
                         Payment is still pending. Please check your phone.
@@ -1556,10 +1557,42 @@ $regions = $regionService->getAllRegions();
                     paymentPollingTimer = setTimeout(() => {
                         checkPaymentStatus(checkoutRequestId);
                     }, 30000);
+                } else if (result.data?.status === 'cancelled') {
+                    confirmMsg.innerHTML = `
+                        <i class="fas fa-times-circle" style="color:#f59e0b;"></i>
+                        ${result.message}
+                        <br><small>You cancelled the transaction. You can try again.</small>
+                    `;
+                    actionBtn.textContent = 'Try Again';
+                    actionBtn.onclick = function() {
+                        closeModal();
+                        setTimeout(() => openModal(currentCard), 300);
+                    };
+                    if (paymentPollingTimer) {
+                        clearTimeout(paymentPollingTimer);
+                        paymentPollingTimer = null;
+                    }
+                } else if (result.data?.status === 'timeout') {
+                    confirmMsg.innerHTML = `
+                        <i class="fas fa-clock" style="color:#f59e0b;"></i>
+                        ${result.message}
+                        <br><small>Please check your phone and try again if needed.</small>
+                    `;
+                    actionBtn.textContent = 'Try Again';
+                    actionBtn.onclick = function() {
+                        closeModal();
+                        setTimeout(() => openModal(currentCard), 300);
+                    };
+                    if (paymentPollingTimer) {
+                        clearTimeout(paymentPollingTimer);
+                        paymentPollingTimer = null;
+                    }
                 } else {
+                    // Failed status
                     confirmMsg.innerHTML = `
                         <i class="fas fa-exclamation-circle" style="color:#dc2626;"></i>
                         ${result.message || 'Payment failed. Please try again.'}
+                        ${result.data?.failure_reason ? `<br><small>${result.data.failure_reason}</small>` : ''}
                         ${result.data?.result_desc ? `<br><small>${result.data.result_desc}</small>` : ''}
                     `;
                     actionBtn.textContent = 'Try Again';
